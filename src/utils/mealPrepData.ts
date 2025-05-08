@@ -6,6 +6,26 @@ interface MealPrepResponse {
 
 export const mealPrepResponses: MealPrepResponse[] = [
   {
+    keywords: ['illness type', 'what illness', 'which illness'],
+    response: "Please choose from: cold, flu, fever, diabetes, or general weakness."
+  },
+  {
+    keywords: ['veg or non', 'vegetarian', 'non-vegetarian', 'nonveg', 'non veg'],
+    response: "Veg: khichdi, dal rice, moong dal soup, paneer curry, mixed veg stew.\n\nNon-veg: chicken broth, boiled egg, grilled fish, chicken soup, soft rice with fish curry."
+  },
+  {
+    keywords: ['allergies', 'allergy', 'allergic'],
+    response: "Please avoid ingredients like nuts, dairy, or gluten if allergic. Let me know your allergy and I'll adjust the meal accordingly."
+  },
+  {
+    keywords: ['meal time', 'mealtime', 'time of meal', 'when to eat'],
+    response: "Breakfast: oats porridge, boiled eggs, fruit bowl, upma.\n\nLunch: khichdi, dal chawal, veg curry with rice or chapati.\n\nDinner: soup, lightly sautéed vegetables, curd rice, grilled tofu."
+  },
+  {
+    keywords: ['symptoms', 'direct choice', 'what symptoms'],
+    response: "If symptoms: please type them (e.g., cold, body pain, fatigue).\n\nIf direct choice: just tell me your illness or preferred meal type (e.g., high protein veg)."
+  },
+  {
     keywords: ['flu', 'cold', 'fever', 'cough'],
     response: "For flu or cold, focus on hydrating foods like chicken soup, herbal teas with honey, and broths. Foods rich in vitamin C (citrus, berries) and zinc (pumpkin seeds) can support your immune system. Aim for easy-to-digest meals like rice porridge, baked sweet potatoes, and steamed vegetables. Stay hydrated with water, electrolyte drinks, and herbal teas."
   },

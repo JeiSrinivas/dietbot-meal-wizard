@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { useOpenAI } from '@/utils/openaiService';
 import { toast } from 'sonner';
+import { findMealPrepResponse } from '@/utils/mealPrepData';
 
 interface Message {
   content: string;
@@ -19,7 +20,7 @@ export const useChatbot = () => {
   const [apiKey, setApiKey] = useState('');
   const [messages, setMessages] = useState<Message[]>([
     {
-      content: "Hi there! I'm DietBot. How can I help with your nutrition questions today?",
+      content: "Hi there! I'm DietBot. How can I help with your nutrition questions today? Try asking me one of the questions below.",
       sender: 'bot',
       timestamp: new Date()
     }
@@ -58,20 +59,39 @@ export const useChatbot = () => {
     // Set typing indicator
     setIsTyping(true);
     
-    // Get all previous messages in the format OpenAI expects
-    const messageHistory = messages
-      .filter(msg => msg.sender !== 'bot' || messages.indexOf(msg) !== 0) // Skip initial greeting
-      .map(msg => ({
-        role: msg.sender === 'user' ? 'user' as const : 'assistant' as const,
-        content: msg.content
-      }));
-    
-    // Add the new user message
-    messageHistory.push({ role: 'user', content: userMessage.content });
-    
     try {
-      // Get response from OpenAI
-      const botResponseText = await sendMessage(messageHistory);
+      let botResponseText = '';
+      
+      // Use API if key exists, otherwise use hardcoded responses
+      if (apiKey) {
+        // Get all previous messages in the format OpenAI expects
+        const messageHistory = messages
+          .filter(msg => msg.sender !== 'bot' || messages.indexOf(msg) !== 0) // Skip initial greeting
+          .map(msg => ({
+            role: msg.sender === 'user' ? 'user' as const : 'assistant' as const,
+            content: msg.content
+          }));
+        
+        // Add the new user message
+        messageHistory.push({ role: 'user', content: userMessage.content });
+        
+        try {
+          // Get response from OpenAI
+          botResponseText = await sendMessage(messageHistory);
+        } catch (err) {
+          // Fallback to hardcoded responses if API fails
+          console.error('API call failed, using fallback responses');
+          botResponseText = findMealPrepResponse(userMessage.content);
+        }
+      } else {
+        // Use hardcoded responses when no API key
+        setTimeout(() => {
+          botResponseText = findMealPrepResponse(userMessage.content);
+        }, 500); // Add a small delay to simulate thinking
+        
+        // Wait for the timeout to complete
+        await new Promise(resolve => setTimeout(resolve, 600));
+      }
       
       const botResponse: Message = {
         content: botResponseText,
@@ -82,6 +102,7 @@ export const useChatbot = () => {
       setMessages(prev => [...prev, botResponse]);
     } catch (err) {
       console.error('Error getting response:', err);
+      toast.error('Failed to get a response. Please try again.');
     } finally {
       setIsTyping(false);
     }

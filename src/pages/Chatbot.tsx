@@ -37,7 +37,7 @@ const Chatbot = () => {
               input={input}
               setInput={setInput}
               handleSend={handleSend}
-              isDisabled={loading || !apiKey}
+              isDisabled={loading}
               apiKeyExists={!!apiKey}
             />
           </div>
