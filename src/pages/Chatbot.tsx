@@ -5,6 +5,8 @@ import Footer from '@/components/Footer';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Send } from 'lucide-react';
+import { useOpenAI } from '@/utils/openaiService';
+import { toast } from 'sonner';
 
 interface Message {
   content: string;
@@ -14,6 +16,7 @@ interface Message {
 
 const Chatbot = () => {
   const [input, setInput] = useState('');
+  const [apiKey, setApiKey] = useState('');
   const [messages, setMessages] = useState<Message[]>([
     {
       content: "Hi there! I'm DietBot. How can I help with your nutrition questions today?",
@@ -22,42 +25,9 @@ const Chatbot = () => {
     }
   ]);
   const [isTyping, setIsTyping] = useState(false);
+  const { sendMessage, loading, error } = useOpenAI(apiKey);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
-
-  // Sample responses for common questions
-  const botResponses: Record<string, string[]> = {
-    "diabetes": [
-      "For diabetes, focus on foods with a low glycemic index like whole grains, legumes, and non-starchy vegetables.",
-      "Try to limit refined carbs and sugars. Instead, opt for complex carbohydrates like quinoa, brown rice, and sweet potatoes.",
-      "Regular meal timing can help maintain stable blood sugar levels. Try to eat at consistent times each day."
-    ],
-    "hypertension": [
-      "For hypertension, the DASH diet is often recommended - it focuses on fruits, vegetables, whole grains, and lean proteins.",
-      "Reducing sodium intake is crucial. Aim for less than 2,300mg per day, or ideally less than 1,500mg.",
-      "Foods rich in potassium, like bananas, spinach, and sweet potatoes, can help lower blood pressure."
-    ],
-    "thyroid": [
-      "For thyroid issues, focus on selenium-rich foods like Brazil nuts, tuna, and eggs.",
-      "Iodine is important for thyroid function - seaweed, dairy products, and iodized salt are good sources.",
-      "Some foods can interfere with thyroid medication, so take your medication on an empty stomach and wait before eating."
-    ],
-    "weight loss": [
-      "For weight loss, focus on creating a calorie deficit through a combination of diet and exercise.",
-      "Prioritize high-protein foods and fiber-rich vegetables to help you feel full longer.",
-      "Consider intermittent fasting or meal timing strategies that work with your lifestyle."
-    ],
-    "healthy snacks": [
-      "Great healthy snack options include Greek yogurt with berries, apple slices with almond butter, or hummus with veggie sticks.",
-      "A handful of nuts or seeds provides healthy fats and protein, making them a satisfying snack.",
-      "Roasted chickpeas or edamame make great high-protein, fiber-rich snack options."
-    ],
-    "vegetarian": [
-      "For a balanced vegetarian diet, ensure you're getting enough protein from sources like legumes, tofu, tempeh, and dairy/eggs if included.",
-      "Consider supplements for nutrients that can be harder to get from plant foods, like vitamin B12 and omega-3 fatty acids.",
-      "Combine different plant proteins (like rice and beans) to get all essential amino acids."
-    ]
-  };
 
   // Function to automatically scroll to the bottom of the chat
   const scrollToBottom = () => {
@@ -68,24 +38,22 @@ const Chatbot = () => {
     scrollToBottom();
   }, [messages]);
 
-  // Function to get bot response based on user input
-  const getBotResponse = (userInput: string): string => {
-    const input = userInput.toLowerCase();
-    
-    // Check for specific keywords in the user's message
-    for (const [key, responses] of Object.entries(botResponses)) {
-      if (input.includes(key)) {
-        // Return a random response from the array of potential responses
-        return responses[Math.floor(Math.random() * responses.length)];
-      }
+  useEffect(() => {
+    // Check if API key exists in localStorage
+    const storedApiKey = localStorage.getItem('openai_api_key');
+    if (storedApiKey) {
+      setApiKey(storedApiKey);
     }
-    
-    // If no specific keywords are found, return a default response
-    return "I'm not sure how to answer that specifically. However, I can provide information about diet recommendations for conditions like diabetes, hypertension, thyroid disorders, or general nutrition advice. Could you please clarify your question?";
-  };
+  }, []);
+
+  useEffect(() => {
+    if (error) {
+      toast.error(error);
+    }
+  }, [error]);
 
   // Function to handle sending messages
-  const handleSend = () => {
+  const handleSend = async () => {
     if (input.trim() === '') return;
     
     // Add user message
@@ -98,20 +66,45 @@ const Chatbot = () => {
     setMessages(prev => [...prev, userMessage]);
     setInput('');
     
-    // Simulate bot typing
+    // Set typing indicator
     setIsTyping(true);
     
-    // Simulate bot response after a delay
-    setTimeout(() => {
+    // Get all previous messages in the format OpenAI expects
+    const messageHistory = messages
+      .filter(msg => msg.sender !== 'bot' || messages.indexOf(msg) !== 0) // Skip initial greeting
+      .map(msg => ({
+        role: msg.sender === 'user' ? 'user' as const : 'assistant' as const,
+        content: msg.content
+      }));
+    
+    // Add the new user message
+    messageHistory.push({ role: 'user', content: userMessage.content });
+    
+    try {
+      // Get response from OpenAI
+      const botResponseText = await sendMessage(messageHistory);
+      
       const botResponse: Message = {
-        content: getBotResponse(input),
+        content: botResponseText,
         sender: 'bot',
         timestamp: new Date()
       };
       
       setMessages(prev => [...prev, botResponse]);
+    } catch (err) {
+      console.error('Error getting response:', err);
+    } finally {
       setIsTyping(false);
-    }, 1500);
+    }
+  };
+
+  const handleSaveApiKey = () => {
+    if (apiKey.trim()) {
+      localStorage.setItem('openai_api_key', apiKey);
+      toast.success('API key saved successfully');
+    } else {
+      toast.error('Please enter a valid API key');
+    }
   };
 
   return (
@@ -121,6 +114,29 @@ const Chatbot = () => {
       <main className="flex-grow container mx-auto px-4 py-8">
         <div className="max-w-2xl mx-auto">
           <h1 className="text-3xl font-bold text-center mb-8">DietBot Chat Assistant</h1>
+          
+          {/* API Key Input */}
+          <div className="mb-6 p-4 bg-white rounded-lg shadow-md">
+            <div className="flex flex-col sm:flex-row gap-2">
+              <Input
+                type="password"
+                placeholder="Enter your OpenAI API key"
+                value={apiKey}
+                onChange={(e) => setApiKey(e.target.value)}
+                className="flex-grow"
+              />
+              <Button 
+                onClick={handleSaveApiKey} 
+                className="bg-dietbot-primary hover:bg-dietbot-dark"
+                disabled={!apiKey.trim()}
+              >
+                Save API Key
+              </Button>
+            </div>
+            <p className="text-xs text-gray-500 mt-2">
+              Your API key is stored locally in your browser and never sent to our servers.
+            </p>
+          </div>
           
           <div className="bg-white rounded-lg shadow-md overflow-hidden">
             {/* Chat messages container */}
@@ -138,7 +154,7 @@ const Chatbot = () => {
                           : 'bg-white border border-gray-200'
                       }`}
                     >
-                      <p>{message.content}</p>
+                      <p className="whitespace-pre-wrap">{message.content}</p>
                       <p className={`text-xs mt-1 ${
                         message.sender === 'user' ? 'text-white/70' : 'text-gray-500'
                       }`}>
@@ -175,17 +191,25 @@ const Chatbot = () => {
                     if (e.key === 'Enter') handleSend();
                   }}
                   className="flex-grow"
+                  disabled={loading || !apiKey}
                 />
                 <Button 
                   onClick={handleSend} 
                   className="bg-dietbot-primary hover:bg-dietbot-dark"
+                  disabled={loading || !apiKey}
                 >
                   <Send className="h-4 w-4" />
                 </Button>
               </div>
-              <p className="text-xs text-gray-500 mt-2">
-                Try asking: "What should I eat for diabetes?" or "Recommend foods for hypertension"
-              </p>
+              {!apiKey ? (
+                <p className="text-xs text-amber-600 mt-2">
+                  Please enter your OpenAI API key above to start chatting
+                </p>
+              ) : (
+                <p className="text-xs text-gray-500 mt-2">
+                  Try asking: "What should I eat for diabetes?" or "Recommend foods for hypertension"
+                </p>
+              )}
             </div>
           </div>
 
