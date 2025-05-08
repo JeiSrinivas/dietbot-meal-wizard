@@ -13,6 +13,12 @@ interface ChatInputProps {
 }
 
 const ChatInput = ({ input, setInput, handleSend, isDisabled, apiKeyExists }: ChatInputProps) => {
+  const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' && input.trim() !== '') {
+      handleSend();
+    }
+  };
+
   return (
     <div className="p-4 border-t">
       <div className="flex gap-2">
@@ -20,23 +26,21 @@ const ChatInput = ({ input, setInput, handleSend, isDisabled, apiKeyExists }: Ch
           placeholder="Ask about meal prep for specific health conditions..."
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          onKeyPress={(e) => {
-            if (e.key === 'Enter') handleSend();
-          }}
+          onKeyPress={handleKeyPress}
           className="flex-grow"
           disabled={isDisabled}
         />
         <Button 
           onClick={handleSend} 
           className="bg-dietbot-primary hover:bg-dietbot-dark"
-          disabled={isDisabled}
+          disabled={isDisabled || input.trim() === ''}
         >
           <Send className="h-4 w-4" />
         </Button>
       </div>
       {!apiKeyExists ? (
-        <p className="text-xs text-gray-600 mt-2">
-          No API key needed! You can still chat about meal preparation for health conditions.
+        <p className="text-xs text-green-600 mt-2">
+          No API key needed! Ask questions about meal preparation for health conditions and DietBot will respond.
         </p>
       ) : (
         <p className="text-xs text-gray-500 mt-2">

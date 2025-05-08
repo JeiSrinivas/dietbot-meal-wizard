@@ -12,6 +12,7 @@ const ChatFeatures = () => {
         <li>Foods to boost immunity and energy levels</li>
         <li>Digestive-friendly meal ideas for stomach issues</li>
       </ul>
+      <p className="text-xs text-gray-500 mt-2 italic">Try asking questions like "What should I eat when I have a fever?" or "Good meals for someone recovering from surgery"</p>
     </div>
   );
 };
